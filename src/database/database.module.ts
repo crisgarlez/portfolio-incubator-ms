@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import config from 'src/config/config';
+import config from '../configuration/configuration';
 
 @Global()
 @Module({
@@ -9,17 +9,12 @@ import config from 'src/config/config';
     MongooseModule.forRootAsync({
       inject: [config.KEY],
       useFactory: (configService: ConfigType<typeof config>) => {
-        const { connection, user, password, host, port, dbName } =
-          configService.incubatorDb;
+        const { DatabaseUri } = configService.database;
         return {
-          uri: `${connection}://${host}:${port}`,
-          user,
-          pass: password,
-          dbName,
+          uri: DatabaseUri,
         };
       },
     }),
   ],
-  exports: [MongooseModule],
 })
 export class DatabaseModule {}

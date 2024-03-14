@@ -4,24 +4,10 @@ import { AppService } from './app.service';
 import { MonstersModule } from './monsters/monsters.module';
 import { DatabaseModule } from './database/database.module';
 import { ConfigModule } from '@nestjs/config';
-import config from './config/config';
-import { enviroments } from './config/environments';
-import * as Joi from 'joi';
+import { ConfigurationModule } from './configuration/configuration.module';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      load: [config],
-      envFilePath: enviroments[process.env.NODE_ENV] || '.env',
-      ignoreEnvFile: false,
-      isGlobal: true,
-      validationSchema: Joi.object({
-        APP_VERSION: Joi.string().required(),
-      }),
-    }),
-    DatabaseModule,
-    MonstersModule,
-  ],
+  imports: [ConfigurationModule, DatabaseModule, MonstersModule],
   controllers: [AppController],
   providers: [AppService],
 })

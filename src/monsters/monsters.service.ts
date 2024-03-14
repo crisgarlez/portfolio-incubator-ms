@@ -1,16 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Monster } from './monster.schema';
 import { HttpService } from '@nestjs/axios';
 import { v4 as uuidv4 } from 'uuid';
 import { lastValueFrom } from 'rxjs';
+import { ConfigService } from '@nestjs/config';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class MonstersService {
+  private readonly logger = new Logger(MonstersService.name);
+
   constructor(
     private readonly httpService: HttpService,
     @InjectModel(Monster.name) private monsterModel: Model<Monster>,
+    private configService: ConfigService,
   ) {}
 
   async findAll(): Promise<Monster[]> {
@@ -22,34 +27,45 @@ export class MonstersService {
   }
 
   async create(createMonsterDto: Monster): Promise<Monster> {
-    // Realizar la llamada HTTP para obtener la información del tipo de monstruo
+    this.logger.debug('create...');
+
+    const monsterTypesEndpoint = this.configService.get<string>(
+      'MONSTER_TYPES_ENDPOINT',
+    );
 
     let incubationTime = 0;
 
     try {
       const response$ = await this.httpService.get(
-        `http://127.0.0.1:8000/api/monster-types/${createMonsterDto.typeCode}`,
+        `${monsterTypesEndpoint}/${createMonsterDto.typeCode}`,
       );
 
       const response = await lastValueFrom(response$);
 
-      console.log('response: ' + JSON.stringify(response.data));
+      this.logger.debug('response: ' + JSON.stringify(response.data));
 
       incubationTime = response.data.incubation_time;
     } catch (error) {
-      console.log('error:' + error);
+      this.logger.debug('error:' + error);
+      throw new RpcException('Monster Type not found');
     }
+
+    this.logger.debug('incubationTime: ' + incubationTime);
 
     const currentTime = new Date();
     currentTime.setMinutes(currentTime.getMinutes() + incubationTime);
 
-    // Sumar el tiempo de incubación a la hora actual
     createMonsterDto.incubationTime = currentTime.getTime();
     createMonsterDto.status = 'INCUBATING';
+    createMonsterDto.imageUrl = `https://robohash.org/${createMonsterDto.name.replace(
+      /\s/g,
+      '',
+    )}${createMonsterDto.attack}${createMonsterDto.defense}${
+      createMonsterDto.hp
+    }${createMonsterDto.speed}?set=set2`;
     createMonsterDto.code = uuidv4();
 
-    const createdMonster = new this.monsterModel(createMonsterDto);
-    return createdMonster.save();
+    return this.monsterModel.create(createMonsterDto);
   }
 
   async update(id: string, updateMonsterDto: Monster): Promise<Monster> {

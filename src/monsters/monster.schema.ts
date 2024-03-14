@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Exclude } from 'class-transformer';
 import { HydratedDocument } from 'mongoose';
 
 export type MonsterDocument = HydratedDocument<Monster>;
@@ -18,6 +19,13 @@ export type MonsterDocument = HydratedDocument<Monster>;
   },
 })
 export class Monster {
+  constructor(partial: Partial<Monster>) {
+    Object.assign(this, partial);
+  }
+
+  @Exclude()
+  _id?: string;
+
   @Prop({ required: true })
   name: string;
 
